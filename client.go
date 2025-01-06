@@ -2,11 +2,11 @@ package aptos
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/aptos-labs/aptos-go-sdk/api"
 	"github.com/hasura/go-graphql-client"
+	"github.com/valyala/fasthttp"
 )
 
 // NetworkConfig a configuration for the Client and which network to use.  Use one of the preconfigured [LocalnetConfig], [DevnetConfig], [TestnetConfig], or [MainnetConfig] unless you have your own full node.
@@ -438,10 +438,10 @@ type Client struct {
 
 // NewClient Creates a new client with a specific network config that can be extended in the future
 func NewClient(config NetworkConfig, options ...any) (client *Client, err error) {
-	var httpClient *http.Client = nil
+	var httpClient *fasthttp.Client = nil
 	for i, arg := range options {
 		switch value := arg.(type) {
-		case *http.Client:
+		case *fasthttp.Client:
 			if httpClient != nil {
 				err = fmt.Errorf("NewClient only accepts one http.Client")
 				return
@@ -464,7 +464,11 @@ func NewClient(config NetworkConfig, options ...any) (client *Client, err error)
 	// Indexer may not be present
 	var indexerClient *IndexerClient = nil
 	if config.IndexerUrl != "" {
-		indexerClient = NewIndexerClient(nodeClient.client, config.IndexerUrl)
+		httpIndexerClient, err := NewHttpClient(config.NodeUrl, config.ChainId)
+		if err != nil {
+			return nil, err
+		}
+		indexerClient = NewIndexerClient(httpIndexerClient, config.IndexerUrl)
 	}
 
 	// Faucet may not be present
